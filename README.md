@@ -1,15 +1,17 @@
-# Interval TypeScript Starter
+Contains some [Interval](https://interval.com) apps for working with Spotify data.
 
-Created with
-[create-interval-app](https://github.com/interval/create-interval-app).
+These actions require a Spotify account and a registered Spotify app. You can register a new app here: https://developer.spotify.com/dashboard/login
 
-## Typing
+After creating your app, add the client ID and client secret to the `.env` file, along with your Interval API key and org slug. The org slug is required for constructing the OAuth redirect URI, which must **exactly** match the URL of your Interval action. It will look like this:
 
-The Interval SDK is written in TypeScript and should have rich type hints and
-inference. If you experience issues with IDE support, please ensure your editor
-is using the correct version of TypeScript that is installed in the workspace.
-If you are using Visual Studio Code, please try
-[using the workspace version of TypeScript](https://code.visualstudio.com/docs/typescript/typescript-compiling#_using-the-workspace-version-of-typescript).
-Many editors should do this automatically.
+```
+https://interval.com/dashboard/<ORG_SLUG>/develop/actions/<ACTION_SLUG>
+```
 
-If that doesn't help, please let us know!
+The URI is constructed within the `monthly_likes_playlist` action in `src/index.ts`. See the instructions there if you want to change the action slug.
+
+---
+
+### Included actions
+
+- `monthly_likes_playlist`: Creates a playlist containing your likes for a given month.
