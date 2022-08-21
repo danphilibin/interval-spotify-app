@@ -70,6 +70,6 @@ async function beginAuth(redirectUri: string) {
   });
 
   await io.display.link("Click here to authorize Spotify", {
-    href: `https://accounts.spotify.com/authorize?${params.toString()}`,
+    url: `https://accounts.spotify.com/authorize?${params.toString()}`,
   });
 }

@@ -18,7 +18,7 @@ const interval = new Interval({
       handler: async () => {
         await requireSpotifyAuth();
 
-        const date = await io.experimental.date(
+        const date = await io.input.date(
           "Choose a month to generate a playlist for:"
         );
 
@@ -61,7 +61,7 @@ const interval = new Interval({
         }
 
         await io.display.link("View playlist", {
-          href: playlist.external_urls.spotify,
+          url: playlist.external_urls.spotify,
         });
       },
     },
