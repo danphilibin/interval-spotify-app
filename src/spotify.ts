@@ -30,7 +30,7 @@ export async function collectTracksForMonth({ date }: { date: Date }) {
 
     const items = liked.body.items.filter(
       (t) =>
-        new Date(t.added_at).getMonth() + 1 === month &&
+        new Date(t.added_at).getMonth() === month &&
         new Date(t.added_at).getFullYear() === year
     );
 
@@ -48,7 +48,7 @@ export async function collectTracksForMonth({ date }: { date: Date }) {
       }
 
       if (
-        lastTrackDate.getMonth() + 1 < month &&
+        lastTrackDate.getMonth() < month &&
         lastTrackDate.getFullYear() < year
       ) {
         // have paged beyond the month we're searching for
