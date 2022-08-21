@@ -29,4 +29,6 @@ If you get an `Invalid Redirect URI` error, double check that the action URL in 
 
 ### Included actions
 
-- `monthly_likes_playlist`: Creates a playlist containing your likes for a given month.
+`monthly_likes_playlist`: Creates a playlist containing your likes for a given month. Demo:
+
+![time-capsule-playlists](https://user-images.githubusercontent.com/180350/185810802-eda96ada-8306-4b14-8981-144eba38c60a.gif)
