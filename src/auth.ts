@@ -1,4 +1,4 @@
-import { ctx, io } from "@interval/sdk";
+import { ctx } from "@interval/sdk";
 import spotifyApi from "./spotify";
 import { spotifyScopes } from "./util";
 
@@ -27,6 +27,8 @@ async function checkAuth() {
 export async function requireSpotifyAuth() {
   checkRequiredKeys();
 
+  await ctx.loading.start("Authorizing with Spotify...");
+
   const redirectUri = `https://interval.com/dashboard/${
     ctx.organization.slug
   }/${ctx.environment === "development" ? "develop/actions" : "actions"}/${
@@ -38,8 +40,7 @@ export async function requireSpotifyAuth() {
 
   try {
     if (!accessToken && !ctx.params.code) {
-      await beginAuth(redirectUri);
-      return;
+      return ctx.redirect({ url: getAuthUrl(redirectUri) });
     }
 
     if (ctx.params.code) {
@@ -53,14 +54,14 @@ export async function requireSpotifyAuth() {
 
     await checkAuth();
   } catch (error) {
-    console.error(error);
+    // console.error(error);
 
     // start over
-    await beginAuth(redirectUri);
+    return ctx.redirect({ url: getAuthUrl(redirectUri) });
   }
 }
 
-async function beginAuth(redirectUri: string) {
+function getAuthUrl(redirectUri: string) {
   // Generate a URL for the user to visit to authorize the app
   const params = new URLSearchParams({
     response_type: "code",
@@ -69,7 +70,5 @@ async function beginAuth(redirectUri: string) {
     scope: spotifyScopes.join(" "),
   });
 
-  await io.display.link("Click here to authorize Spotify", {
-    url: `https://accounts.spotify.com/authorize?${params.toString()}`,
-  });
+  return `https://accounts.spotify.com/authorize?${params.toString()}`;
 }

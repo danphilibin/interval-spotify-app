@@ -34,6 +34,7 @@ const interval = new Interval({
 
         await io.display.table(`Your likes from ${monthNameString}`, {
           data: tracksFromMonth,
+          defaultPageSize: 100,
           rowMenuItems: (row) => [
             {
               label: "Listen on Spotify",
