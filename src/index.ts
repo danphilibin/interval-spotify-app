@@ -75,6 +75,38 @@ const interval = new Interval({
         });
       },
     },
+    recent_likes: {
+      name: "Recent likes",
+      description: "Shows a list of your most recent likes.",
+      handler: async () => {
+        await requireSpotifyAuth();
+
+        const liked = await spotifyApi.getMySavedTracks({
+          limit: 50,
+        });
+
+        await io.select.table("Recently liked", {
+          data: liked.body.items.map((i) => i.track),
+          columns: [
+            "id",
+            "uri",
+            "name",
+            {
+              label: "Artists",
+              renderCell: (track) =>
+                track.artists.map((a) => a.name).join(", "),
+            },
+          ],
+          defaultPageSize: Infinity,
+          rowMenuItems: (row) => [
+            {
+              label: "Listen on Spotify",
+              url: row.uri,
+            },
+          ],
+        });
+      },
+    },
   },
 });
 
