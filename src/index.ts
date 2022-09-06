@@ -1,17 +1,20 @@
 import "dotenv/config";
 import Interval, { ctx, io } from "@interval/sdk";
-import {
-  getDateString,
-  monthNames,
-  sleep,
-  splitArrayIntoBatches,
-} from "./util";
-import { requireSpotifyAuth } from "./auth";
+import { monthNames, splitArrayIntoBatches } from "./util";
+import { AUTHORIZE_ACTION_NAME, requireSpotifyAuth } from "./auth";
 import spotifyApi, { collectTracksForMonth } from "./spotify";
 
 const interval = new Interval({
   apiKey: process.env.INTERVAL_KEY,
   actions: {
+    [AUTHORIZE_ACTION_NAME]: {
+      name: "Authorize",
+      description: "Authorize with Spotify",
+      handler: async () => {
+        await requireSpotifyAuth();
+        await io.display.markdown("Authorized");
+      },
+    },
     monthly_likes_playlist: {
       name: "Monthly likes playlist",
       description: "Generate a playlist containing your likes from any month.",

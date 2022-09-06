@@ -5,6 +5,8 @@ import { spotifyScopes } from "./util";
 // store this in memory to reuse between transactions, as long as the server doesn't restart
 export let accessToken: string | null = null;
 
+export const AUTHORIZE_ACTION_NAME = "authorize";
+
 function checkRequiredKeys() {
   const requiredKeys = [
     "SPOTIFY_CLIENT_ID",
@@ -28,6 +30,13 @@ export async function requireSpotifyAuth() {
   checkRequiredKeys();
 
   await ctx.loading.start("Authorizing with Spotify...");
+
+  if (!accessToken && ctx.action.slug !== AUTHORIZE_ACTION_NAME) {
+    return ctx.redirect({
+      action: AUTHORIZE_ACTION_NAME,
+      params: { returnTo: ctx.action.slug },
+    });
+  }
 
   const redirectUri = `https://interval.com/dashboard/${
     ctx.organization.slug
@@ -53,6 +62,11 @@ export async function requireSpotifyAuth() {
     }
 
     await checkAuth();
+
+    // `state` will be the action name to redirect to after auth
+    if (ctx.params.state) {
+      return ctx.redirect({ action: String(ctx.params.state) });
+    }
   } catch (error) {
     // console.error(error);
 
@@ -69,6 +83,13 @@ function getAuthUrl(redirectUri: string) {
     redirect_uri: redirectUri,
     scope: spotifyScopes.join(" "),
   });
+
+  const returnTo =
+    "returnTo" in ctx.params ? String(ctx.params.returnTo) : undefined;
+
+  if (returnTo) {
+    params.set("state", returnTo);
+  }
 
   return `https://accounts.spotify.com/authorize?${params.toString()}`;
 }
