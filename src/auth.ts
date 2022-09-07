@@ -1,6 +1,6 @@
 import { ctx } from "@interval/sdk";
 import spotifyApi from "./spotify";
-import { spotifyScopes } from "./util";
+import { sleep, spotifyScopes } from "./util";
 
 // store this in memory to reuse between transactions, as long as the server doesn't restart
 export let accessToken: string | null = null;
@@ -21,9 +21,15 @@ function checkRequiredKeys() {
   }
 }
 
-async function checkAuth() {
-  spotifyApi.setAccessToken(accessToken);
-  await spotifyApi.getMe();
+export async function checkAuth(): Promise<boolean> {
+  if (!accessToken) return false;
+
+  try {
+    spotifyApi.setAccessToken(accessToken);
+    return (await spotifyApi.getMe()).statusCode === 200;
+  } catch (error) {
+    return false;
+  }
 }
 
 export async function requireSpotifyAuth() {
@@ -31,48 +37,44 @@ export async function requireSpotifyAuth() {
 
   await ctx.loading.start("Authorizing with Spotify...");
 
-  if (!accessToken && ctx.action.slug !== AUTHORIZE_ACTION_NAME) {
-    return ctx.redirect({
-      action: AUTHORIZE_ACTION_NAME,
-      params: { returnTo: ctx.action.slug },
-    });
-  }
+  if (await checkAuth()) return;
 
-  const redirectUri = `https://interval.com/dashboard/${
+  const dashboardUrl = `https://interval.com/dashboard/${
     ctx.organization.slug
-  }/${ctx.environment === "development" ? "develop/actions" : "actions"}/${
-    ctx.action.slug
-  }`;
+  }/${ctx.environment === "development" ? "develop/actions" : "actions"}`;
 
-  // IMPORTANT: this URI must be added to the Spotify developer dashboard
+  // Note: redirecting back to an "authorize" action is necessary because redirect URIs must be
+  // whitelisted in Spotify, so we can't redirect straight back to whatever action you were trying to run.
+  // This creates a bit of redirection UI jank in Interval, but it's the best we can do for now.
+  const redirectUri = dashboardUrl + `/${AUTHORIZE_ACTION_NAME}`;
+
+  // IMPORTANT:
+  // 1. This URI must be added to the Spotify developer dashboard.
+  // 2. This must be set before requesting `authorizationCodeGrant`.
   spotifyApi.setRedirectURI(redirectUri);
 
-  try {
-    if (!accessToken && !ctx.params.code) {
-      return ctx.redirect({ url: getAuthUrl(redirectUri) });
+  const authCode = "code" in ctx.params ? String(ctx.params.code) : null;
+  const resumeAction = "state" in ctx.params ? String(ctx.params.state) : null;
+
+  if (authCode) {
+    const tokens = await spotifyApi.authorizationCodeGrant(authCode);
+
+    accessToken = tokens.body.access_token;
+
+    if (resumeAction) {
+      await ctx.redirect({ action: resumeAction });
+
+      // pause execution until the redirect happens; this will kill the transaction
+      await sleep(5000);
     }
 
-    if (ctx.params.code) {
-      // returning from the OAuth flow; request an access token
-      const tokens = await spotifyApi.authorizationCodeGrant(
-        String(ctx.params.code)
-      );
-
-      accessToken = tokens.body.access_token;
-    }
-
-    await checkAuth();
-
-    // `state` will be the action name to redirect to after auth
-    if (ctx.params.state) {
-      return ctx.redirect({ action: String(ctx.params.state) });
-    }
-  } catch (error) {
-    // console.error(error);
-
-    // start over
-    return ctx.redirect({ url: getAuthUrl(redirectUri) });
+    return;
   }
+
+  await ctx.redirect({ url: getAuthUrl(redirectUri) });
+
+  // pause execution until the redirect happens; this will kill the transaction
+  await sleep(5000);
 }
 
 function getAuthUrl(redirectUri: string) {
@@ -84,11 +86,8 @@ function getAuthUrl(redirectUri: string) {
     scope: spotifyScopes.join(" "),
   });
 
-  const returnTo =
-    "returnTo" in ctx.params ? String(ctx.params.returnTo) : undefined;
-
-  if (returnTo) {
-    params.set("state", returnTo);
+  if (ctx.action.slug !== AUTHORIZE_ACTION_NAME) {
+    params.set("state", ctx.action.slug);
   }
 
   return `https://accounts.spotify.com/authorize?${params.toString()}`;

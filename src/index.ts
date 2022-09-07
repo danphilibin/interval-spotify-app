@@ -9,10 +9,13 @@ const interval = new Interval({
   actions: {
     [AUTHORIZE_ACTION_NAME]: {
       name: "Authorize",
-      description: "Authorize with Spotify",
+      description:
+        "Authorize with Spotify. You do not need to run this manually, it will run automatically before other actions.",
       handler: async () => {
         await requireSpotifyAuth();
-        await io.display.markdown("Authorized");
+        await io.display.markdown(
+          "Authorization was successful. Return to the dashboard to run an action."
+        );
       },
     },
     monthly_likes_playlist: {
