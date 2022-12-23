@@ -1,11 +1,13 @@
-import { ctx } from "@interval/sdk";
+import { ctx, io, Layout } from "@interval/sdk";
+import path from "path";
 import spotifyApi from "./spotify";
 import { sleep, spotifyScopes } from "./util";
 
 // store this in memory to reuse between transactions, as long as the server doesn't restart
-export let accessToken: string | null = null;
+export let accessToken: string | null =
+  process.env.SPOTIFY_ACCESS_TOKEN ?? getAccessTokenFromFileSystem() ?? null;
 
-export const AUTHORIZE_ACTION_NAME = "authorize";
+export const AUTHORIZE_ACTION_NAME = "spotify/authorize";
 
 function checkRequiredKeys() {
   const requiredKeys = [
@@ -21,6 +23,20 @@ function checkRequiredKeys() {
   }
 }
 
+function writeAccessTokenToFileSystem(accessToken: string) {
+  // write the access token to the file system, so it can be reused between server restarts.
+  // this is not a secure way to store access tokens, but it's fine for this demo
+  const fs = require("fs");
+  fs.writeFileSync(".access-token", accessToken);
+}
+
+function getAccessTokenFromFileSystem() {
+  const fs = require("fs");
+  const accessToken = fs.readFileSync(".access-token", "utf8");
+  if (accessToken) return accessToken;
+  return null;
+}
+
 export async function checkAuth(): Promise<boolean> {
   if (!accessToken) return false;
 
@@ -28,6 +44,7 @@ export async function checkAuth(): Promise<boolean> {
     spotifyApi.setAccessToken(accessToken);
     return (await spotifyApi.getMe()).statusCode === 200;
   } catch (error) {
+    writeAccessTokenToFileSystem("");
     return false;
   }
 }
@@ -42,6 +59,9 @@ export async function requireSpotifyAuth() {
   const dashboardUrl = `https://interval.com/dashboard/${
     ctx.organization.slug
   }/${ctx.environment === "development" ? "develop/actions" : "actions"}`;
+  // const dashboardUrl = `http://localhost:3000/dashboard/${
+  //   ctx.organization.slug
+  // }/${ctx.environment === "development" ? "develop/actions" : "actions"}`;
 
   // Note: redirecting back to an "authorize" action is necessary because redirect URIs must be
   // whitelisted in Spotify, so we can't redirect straight back to whatever action you were trying to run.
@@ -60,6 +80,7 @@ export async function requireSpotifyAuth() {
     const tokens = await spotifyApi.authorizationCodeGrant(authCode);
 
     accessToken = tokens.body.access_token;
+    writeAccessTokenToFileSystem(accessToken);
 
     if (resumeAction) {
       await ctx.redirect({ action: resumeAction });
@@ -75,6 +96,21 @@ export async function requireSpotifyAuth() {
 
   // pause execution until the redirect happens; this will kill the transaction
   await sleep(5000);
+}
+
+// loading and redirect APIs aren't available within pages, so we just return a page with an error
+export async function requireSpotifyPageAuth() {
+  if (!(await checkAuth())) {
+    return new Layout({
+      title: "Spotify",
+      children: [
+        io.display.markdown("Please authorize with Spotify to continue"),
+        io.display.link("Authorize with Spotify", {
+          route: AUTHORIZE_ACTION_NAME,
+        }),
+      ],
+    });
+  }
 }
 
 function getAuthUrl(redirectUri: string) {

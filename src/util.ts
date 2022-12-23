@@ -1,9 +1,18 @@
+import { ctx } from "@interval/sdk";
+
 export function splitArrayIntoBatches(array: any[], size: number) {
   const batches = [];
   for (let i = 0; i < array.length; i += size) {
     batches.push(array.slice(i, i + size));
   }
   return batches;
+}
+
+export function requireParam(param: string) {
+  if (!(param in ctx.params)) {
+    throw new Error(`Missing required parameter: ${param}`);
+  }
+  return String(ctx.params[param]);
 }
 
 export const monthNames = [
@@ -43,4 +52,5 @@ export const spotifyScopes = [
   "playlist-modify-private",
   "playlist-read-private",
   "playlist-read-collaborative",
+  "user-top-read",
 ];
