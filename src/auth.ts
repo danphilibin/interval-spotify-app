@@ -1,11 +1,10 @@
 import { ctx, io, Layout } from "@interval/sdk";
-import path from "path";
 import spotifyApi from "./spotify";
+import fs from "fs";
 import { sleep, spotifyScopes } from "./util";
 
-// store this in memory to reuse between transactions, as long as the server doesn't restart
-export let accessToken: string | null =
-  process.env.SPOTIFY_ACCESS_TOKEN ?? getAccessTokenFromFileSystem() ?? null;
+export const accessTokens: Record<string, string> =
+  getAccessTokenFromFileSystem() ?? {};
 
 export const AUTHORIZE_ACTION_NAME = "spotify/authorize";
 
@@ -23,28 +22,29 @@ function checkRequiredKeys() {
   }
 }
 
-function writeAccessTokenToFileSystem(accessToken: string) {
+function writeAccessTokenToFileSystem(tokens: typeof accessTokens) {
+  if (process.env.NODE_ENV !== "development") return;
+
   // write the access token to the file system, so it can be reused between server restarts.
   // this is not a secure way to store access tokens, but it's fine for this demo
-  const fs = require("fs");
-  fs.writeFileSync(".access-token", accessToken);
+  fs.writeFileSync(".access-token", JSON.stringify(tokens));
 }
 
 function getAccessTokenFromFileSystem() {
-  const fs = require("fs");
-  const accessToken = fs.readFileSync(".access-token", "utf8");
-  if (accessToken) return accessToken;
+  if (process.env.NODE_ENV !== "development") return null;
+  const tokens = fs.readFileSync(".access-token", "utf8");
+  if (tokens) return JSON.parse(tokens);
   return null;
 }
 
 export async function checkAuth(): Promise<boolean> {
-  if (!accessToken) return false;
+  if (!accessTokens[ctx.user.email]) return false;
 
   try {
-    spotifyApi.setAccessToken(accessToken);
+    spotifyApi.setAccessToken(accessTokens[ctx.user.email]);
     return (await spotifyApi.getMe()).statusCode === 200;
   } catch (error) {
-    writeAccessTokenToFileSystem("");
+    writeAccessTokenToFileSystem({});
     return false;
   }
 }
@@ -79,8 +79,8 @@ export async function requireSpotifyAuth() {
   if (authCode) {
     const tokens = await spotifyApi.authorizationCodeGrant(authCode);
 
-    accessToken = tokens.body.access_token;
-    writeAccessTokenToFileSystem(accessToken);
+    accessTokens[ctx.user.email] = tokens.body.access_token;
+    writeAccessTokenToFileSystem(accessTokens);
 
     if (resumeAction) {
       await ctx.redirect({ action: resumeAction });

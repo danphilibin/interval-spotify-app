@@ -23,7 +23,7 @@ export default new Page({
     ]);
 
     return new Layout({
-      title: "🎧 Dan's Spotify",
+      title: `🎧 ${myProfile.body.display_name}'s Spotify`,
       children: [
         io.display.metadata("", {
           layout: "card",
