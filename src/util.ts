@@ -38,6 +38,40 @@ export function getDateString(date: Date) {
   return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
 }
 
+export function getRelativeDateString(date: Date) {
+  const formatter = new Intl.RelativeTimeFormat("en", {
+    numeric: "auto",
+  });
+
+  const diff = Math.round((Date.now() - date.getTime()) / 1000);
+  if (diff < 60) {
+    return formatter.format(-diff, "second");
+  }
+
+  const diffMinutes = Math.round(diff / 60);
+  if (diffMinutes < 60) {
+    return formatter.format(-diffMinutes, "minute");
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) {
+    return formatter.format(-diffHours, "hour");
+  }
+
+  const diffDays = Math.round(diffHours / 24);
+  if (diffDays < 30) {
+    return formatter.format(-diffDays, "day");
+  }
+
+  const diffMonths = Math.round(diffDays / 30);
+  if (diffMonths < 12) {
+    return formatter.format(-diffMonths, "month");
+  }
+
+  const diffYears = Math.round(diffMonths / 12);
+  return formatter.format(-diffYears, "year");
+}
+
 // https://developer.spotify.com/documentation/general/guides/scopes/#scopes
 export const spotifyScopes = [
   "user-library-read",

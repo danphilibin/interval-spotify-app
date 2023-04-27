@@ -1,11 +1,17 @@
 import { io, Layout, Page } from "@interval/sdk";
 import { requireSpotifyPageAuth } from "../../auth";
 import spotifyApi from "../../spotify";
+import { getRelativeDateString } from "../../util";
 
 export default new Page({
   name: "Spotify",
+  description: "",
   handler: async () => {
-    await requireSpotifyPageAuth();
+    const maybeAuth = await requireSpotifyPageAuth();
+
+    if (maybeAuth) {
+      return maybeAuth;
+    }
 
     const [topArtists, topTracks, myProfile, liked] = await Promise.all([
       spotifyApi.getMyTopArtists({ limit: 1, time_range: "medium_term" }),
@@ -48,34 +54,49 @@ export default new Page({
             },
           ],
         }),
-        io.display.grid("", {
-          data: liked.body.items.map((i) => i.track),
-          idealColumnWidth: 250,
-          renderItem: (row) => ({
-            title: row.name,
-            description: row.artists.map((a) => a.name).join(", "),
-            url: row.uri,
-            image: {
-              url: row.album.images[0].url,
-              aspectRatio: 1,
+        io.display.table("", {
+          data: liked.body.items,
+          columns: [
+            {
+              label: "Image",
+              renderCell: (row) => ({
+                image: {
+                  url: row.track.album.images[0].url,
+                  width: "thumbnail",
+                },
+              }),
             },
-            menu: [
-              {
-                label: "Listen on Spotify",
-                url: row.uri,
-              },
-              {
-                label: "Analyze track",
-                route: "spotify/analyzeTrack",
-                params: { trackId: row.id },
-              },
-              ...row.artists.map((a) => ({
-                label: `View ${a.name}`,
-                route: "spotify/artist",
-                params: { artistId: a.id },
-              })),
-            ],
-          }),
+            {
+              label: "Title",
+              renderCell: (row) => row.track.name,
+            },
+            {
+              label: "Artist",
+              renderCell: (row) =>
+                row.track.artists.map((a) => a.name).join(", "),
+            },
+            {
+              label: "Date added",
+              renderCell: (row) =>
+                getRelativeDateString(new Date(row.added_at)),
+            },
+          ],
+          rowMenuItems: (row) => [
+            {
+              label: "Listen on Spotify",
+              url: row.track.uri,
+            },
+            {
+              label: "Analyze track",
+              route: "spotify/analyzeTrack",
+              params: { trackId: row.track.id },
+            },
+            ...row.track.artists.map((a) => ({
+              label: `View ${a.name}`,
+              route: "spotify/artist",
+              params: { artistId: a.id },
+            })),
+          ],
         }),
       ],
     });
