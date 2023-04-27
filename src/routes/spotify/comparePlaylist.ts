@@ -96,7 +96,10 @@ export default new Action({
         columns: [
           {
             label: "Title",
-            renderCell: (row) => row.track.name,
+            renderCell: (row) => ({
+              label: row.track.name,
+              url: row.track.uri,
+            }),
           },
           {
             label: "Artist",

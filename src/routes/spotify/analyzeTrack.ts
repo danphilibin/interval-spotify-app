@@ -5,6 +5,7 @@ import { requireParam } from "../../util";
 
 export default new Page({
   name: "Track analysis",
+  unlisted: true,
   handler: async () => {
     await requireSpotifyPageAuth();
 
