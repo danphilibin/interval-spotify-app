@@ -2,6 +2,8 @@ import { ctx, io, Layout } from "@interval/sdk";
 import spotifyApi from "./spotify";
 import fs from "fs";
 import { sleep, spotifyScopes } from "./util";
+import path from "path";
+import prisma from "./prisma";
 
 export const accessTokens: Record<string, string> =
   getAccessTokenFromFileSystem() ?? {};
@@ -27,12 +29,18 @@ function writeAccessTokenToFileSystem(tokens: typeof accessTokens) {
 
   // write the access token to the file system, so it can be reused between server restarts.
   // this is not a secure way to store access tokens, but it's fine for this demo
-  fs.writeFileSync(".access-token", JSON.stringify(tokens));
+  fs.writeFileSync(
+    path.join(__dirname, "../.access-token"),
+    JSON.stringify(tokens)
+  );
 }
 
 function getAccessTokenFromFileSystem() {
   if (process.env.NODE_ENV !== "development") return null;
-  const tokens = fs.readFileSync(".access-token", "utf8");
+  const tokens = fs.readFileSync(
+    path.join(__dirname, "../.access-token"),
+    "utf8"
+  );
   if (tokens) return JSON.parse(tokens);
   return null;
 }
@@ -42,8 +50,45 @@ export async function checkAuth(): Promise<boolean> {
 
   try {
     spotifyApi.setAccessToken(accessTokens[ctx.user.email]);
-    return (await spotifyApi.getMe()).statusCode === 200;
+
+    const meReq = await spotifyApi.getMe();
+
+    if (meReq.statusCode === 200) {
+      const existingId = await prisma.settings.findFirst({
+        where: { name: "spotifyUserId" },
+      });
+
+      if (existingId && existingId.value !== meReq.body.id) {
+        throw new Error(
+          "Looks like you're trying to log into a different Spotify account than the one you've previously authorized. Please log out of Spotify and try again, or create a new Interval organization for the new account."
+        );
+      }
+
+      await prisma.settings.upsert({
+        where: { name: "spotifyUserId" },
+        create: { name: "spotifyUserId", value: meReq.body.id },
+        update: { value: meReq.body.id },
+      });
+
+      await prisma.settings.upsert({
+        where: { name: "spotifyDisplayName" },
+        create: { name: "spotifyDisplayName", value: meReq.body.display_name },
+        update: { value: meReq.body.display_name },
+      });
+
+      return true;
+    }
+
+    return false;
   } catch (error) {
+    if (
+      error.message.startsWith(
+        "Looks like you're trying to log into a different Spotify account"
+      )
+    ) {
+      throw error;
+    }
+
     writeAccessTokenToFileSystem({});
     return false;
   }

@@ -1,4 +1,5 @@
 import { ctx } from "@interval/sdk";
+import prisma from "./prisma";
 
 export function splitArrayIntoBatches(array: any[], size: number) {
   const batches = [];
@@ -88,3 +89,17 @@ export const spotifyScopes = [
   "playlist-read-collaborative",
   "user-top-read",
 ];
+
+type Settings = "spotifyDisplayName" | "spotifyUserId";
+
+export async function getSetting(name: Settings) {
+  const setting = await prisma.settings.findUnique({
+    where: { name },
+  });
+
+  if (!setting) {
+    throw new Error(`Setting not found: ${name}`);
+  }
+
+  return setting.value;
+}
