@@ -2,6 +2,7 @@ import { ctx } from "@interval/sdk";
 import SpotifyWebApi from "spotify-web-api-node";
 import { getDateString, getSetting, monthNames, sleep } from "./util";
 import prisma from "./prisma";
+import { Prisma } from "@prisma/client";
 
 const spotifyApi = new SpotifyWebApi({
   clientId: process.env.SPOTIFY_CLIENT_ID,
@@ -177,21 +178,24 @@ export async function cachePlaylistTracks(
     where: { playlistId },
   });
 
-  for (const track of tracks) {
-    const data = {
+  const tracksWithMetadata = await getAudioAnalysisForTracks(tracks);
+
+  for (const track of tracksWithMetadata) {
+    const data: Prisma.TrackCreateInput = {
+      id: track.id,
       name: track.name,
       artistsString: track.artists.join(", "),
       spotifyUri: track.spotifyUri,
       album: track.album,
       imageUrl: track.coverImage,
+      duration: track.duration,
+      key: track.key,
+      tempo: track.tempo,
     };
 
     await prisma.track.upsert({
       where: { id: track.id },
-      create: {
-        id: track.id,
-        ...data,
-      },
+      create: data,
       update: data,
     });
 
@@ -201,6 +205,34 @@ export async function cachePlaylistTracks(
       update: {},
     });
   }
+}
+
+async function getAudioAnalysisForTracks(tracks: SpotifyTrackObject[]): Promise<
+  (SpotifyTrackObject & {
+    tempo?: number;
+    key?: number;
+    duration?: number;
+  })[]
+> {
+  const trackIds = tracks.map((track) => track.id);
+
+  const audioAnalysis: SpotifyApi.AudioFeaturesObject[] = [];
+
+  // collect in batches of 100
+  for (let i = 0; i < trackIds.length; i += 100) {
+    const ids = trackIds.slice(i, i + 100);
+
+    const analysis = await spotifyApi.getAudioFeaturesForTracks(ids);
+
+    audioAnalysis.push(...analysis.body.audio_features);
+  }
+
+  return tracks.map((t) => ({
+    ...t,
+    tempo: audioAnalysis.find((a) => a.id === t.id)?.tempo,
+    key: audioAnalysis.find((a) => a.id === t.id)?.key,
+    duration: audioAnalysis.find((a) => a.id === t.id)?.duration_ms,
+  }));
 }
 
 export async function collectPlaylists({ cache = false }: { cache?: boolean }) {

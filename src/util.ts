@@ -103,3 +103,79 @@ export async function getSetting(name: Settings) {
 
   return setting.value;
 }
+
+export function numericKeyToString(key: number): string {
+  switch (key) {
+    case 0:
+      return "C";
+    case 1:
+      return "C♯";
+    case 2:
+      return "D";
+    case 3:
+      return "D♯";
+    case 4:
+      return "E";
+    case 5:
+      return "F";
+    case 6:
+      return "F♯";
+    case 7:
+      return "G";
+    case 8:
+      return "G♯";
+    case 9:
+      return "A";
+    case 10:
+      return "A♯";
+    case 11:
+      return "B";
+    default:
+      return "Unknown";
+  }
+}
+
+export function numericKeyToCamelotKey(key: number): string {
+  switch (key) {
+    case 0:
+      return "8B";
+    case 1:
+      return "3B";
+    case 2:
+      return "10B";
+    case 3:
+      return "5B";
+    case 4:
+      return "12B";
+    case 5:
+      return "7B";
+    case 6:
+      return "2B";
+    case 7:
+      return "9B";
+    case 8:
+      return "4B";
+    case 9:
+      return "11B";
+    case 10:
+      return "6B";
+    case 11:
+      return "1B";
+    default:
+      return "Unknown";
+  }
+}
+
+export function secondsToMinutesString(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}m ${remainingSeconds}s`;
+}
+
+export function secondsToMinutes(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${minutes}:${remainingSeconds}`;
+}

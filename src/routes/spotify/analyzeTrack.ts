@@ -1,7 +1,7 @@
 import { io, Layout, Page } from "@interval/sdk";
 import { requireSpotifyPageAuth } from "../../auth";
 import spotifyApi from "../../spotify";
-import { requireParam } from "../../util";
+import { numericKeyToString, requireParam, secondsToMinutes } from "../../util";
 
 export default new Page({
   name: "Track analysis",
@@ -119,40 +119,3 @@ export default new Page({
     });
   },
 });
-
-function secondsToMinutes(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-  return `${minutes}m ${remainingSeconds}s`;
-}
-
-function numericKeyToString(key: number): string {
-  switch (key) {
-    case 0:
-      return "C";
-    case 1:
-      return "C♯";
-    case 2:
-      return "D";
-    case 3:
-      return "D♯";
-    case 4:
-      return "E";
-    case 5:
-      return "F";
-    case 6:
-      return "F♯";
-    case 7:
-      return "G";
-    case 8:
-      return "G♯";
-    case 9:
-      return "A";
-    case 10:
-      return "A♯";
-    case 11:
-      return "B";
-    default:
-      return "Unknown";
-  }
-}

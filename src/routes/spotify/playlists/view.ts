@@ -1,7 +1,11 @@
 import { io, Page, Layout } from "@interval/sdk";
 import { requireSpotifyPageAuth } from "../../../auth";
 import prisma from "../../../prisma";
-import { requireParam } from "../../../util";
+import {
+  numericKeyToCamelotKey,
+  requireParam,
+  secondsToMinutes,
+} from "../../../util";
 
 export default new Page({
   name: "View playlist",
@@ -55,6 +59,21 @@ export default new Page({
             {
               label: "Artist",
               accessorKey: "artistsString",
+            },
+            {
+              label: "Key",
+              renderCell: (row) =>
+                row.key ? numericKeyToCamelotKey(row.key) : "N/A",
+            },
+            {
+              label: "BPM",
+              renderCell: (row) =>
+                row.tempo ? `${Math.round(row.tempo)} BPM` : "N/A",
+            },
+            {
+              label: "Duration",
+              renderCell: (row) =>
+                row.duration ? secondsToMinutes(row.duration / 1000) : "N/A",
             },
           ],
         }),

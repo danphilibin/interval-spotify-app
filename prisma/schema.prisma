@@ -49,6 +49,9 @@ model Track {
   artistsString String
   album         String
   imageUrl      String?
+  key           Int?
+  tempo         Float?
+  duration      Int?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   playlists     PlaylistToTrack[]
