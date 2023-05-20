@@ -1,0 +1,53 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Playlist {
+  id            String            @id
+  name          String
+  total         Int
+  collaborative Boolean           @default(false)
+  public        Boolean           @default(false)
+  description   String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  tracks        PlaylistToTrack[]
+}
+
+model PlaylistToTrack {
+  id         Int      @id @default(autoincrement())
+  playlist   Playlist @relation(fields: [playlistId], references: [id])
+  playlistId String
+  track      Track    @relation(fields: [trackId], references: [id])
+  trackId    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([playlistId, trackId])
+}
+
+model Settings {
+  name      String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Track {
+  id            String            @id
+  name          String
+  spotifyUri    String
+  artistsString String
+  album         String
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  playlists     PlaylistToTrack[]
+}
