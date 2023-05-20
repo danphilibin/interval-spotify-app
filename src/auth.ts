@@ -25,8 +25,6 @@ function checkRequiredKeys() {
 }
 
 function writeAccessTokenToFileSystem(tokens: typeof accessTokens) {
-  if (process.env.NODE_ENV !== "development") return;
-
   // write the access token to the file system, so it can be reused between server restarts.
   // this is not a secure way to store access tokens, but it's fine for this demo
   fs.writeFileSync(
@@ -37,11 +35,13 @@ function writeAccessTokenToFileSystem(tokens: typeof accessTokens) {
 
 function getAccessTokenFromFileSystem() {
   if (process.env.NODE_ENV !== "development") return null;
-  const tokens = fs.readFileSync(
-    path.join(__dirname, "../.access-token"),
-    "utf8"
-  );
-  if (tokens) return JSON.parse(tokens);
+  try {
+    const tokens = fs.readFileSync(
+      path.join(__dirname, "../.access-token"),
+      "utf8"
+    );
+    if (tokens) return JSON.parse(tokens);
+  } catch (error) {}
   return null;
 }
 
