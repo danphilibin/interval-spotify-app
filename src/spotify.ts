@@ -1,11 +1,37 @@
 import { ctx } from "@interval/sdk";
 import SpotifyWebApi from "spotify-web-api-node";
-import { getDateString, monthNames, sleep } from "./util";
+import { getDateString, getSetting, monthNames, sleep } from "./util";
+import prisma from "./prisma";
 
 const spotifyApi = new SpotifyWebApi({
   clientId: process.env.SPOTIFY_CLIENT_ID,
   clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
 });
+
+// to save time in other places, we'll format all fetched tracks into this shape
+type SpotifyTrackObject = {
+  id: string;
+  name: string;
+  artists: string[];
+  album: string;
+  coverImage?: string;
+  spotifyUri: string;
+};
+
+export const SPOTIFY_MAX_LIMIT = 50;
+
+function convertTrackObjects(
+  tracks: SpotifyApi.TrackObjectFull[]
+): SpotifyTrackObject[] {
+  return tracks.map((track) => ({
+    id: track.id,
+    name: track.name,
+    artists: track.artists.map((a) => a.name),
+    album: track.album.name,
+    coverImage: track.album.images[0]?.url,
+    spotifyUri: track.uri,
+  }));
+}
 
 export async function collectTracksForMonth({ date }: { date: Date }) {
   const pagedTracks: SpotifyApi.SavedTrackObject[] = [];
@@ -82,6 +108,103 @@ export async function collectTracksForMonth({ date }: { date: Date }) {
   });
 
   return tracksFromMonth;
+}
+
+export async function collectTracksFromPlaylist({
+  playlistId,
+}: {
+  playlistId: string;
+}) {
+  const allTracks: SpotifyTrackObject[] = [];
+  let total = 0;
+  let hasMore = true;
+
+  ctx.loading.start("Fetching tracks from playlist...");
+
+  while (hasMore) {
+    const offset = allTracks.length;
+
+    const tracks = await spotifyApi.getPlaylistTracks(playlistId, {
+      limit: SPOTIFY_MAX_LIMIT,
+      offset,
+    });
+
+    total = tracks.body.total;
+
+    ctx.loading.update({ description: `Fetched ${offset} of ${total}` });
+
+    hasMore = tracks.body.next !== null;
+
+    // avoid rate limiting
+    await sleep(1000);
+
+    allTracks.push(
+      ...convertTrackObjects(tracks.body.items.map((item) => item.track))
+    );
+  }
+
+  return allTracks;
+}
+
+export async function collectPlaylists({ cache = false }: { cache?: boolean }) {
+  const items: SpotifyApi.PlaylistObjectSimplified[] = [];
+  let total = 0;
+  let offset = 0;
+  let hasMore = true;
+
+  ctx.loading.start("Fetching playlists...");
+
+  const userId = await getSetting("spotifyUserId");
+
+  while (hasMore) {
+    const playlists = await spotifyApi.getUserPlaylists({
+      limit: SPOTIFY_MAX_LIMIT,
+      offset,
+    });
+
+    offset += playlists.body.items.length;
+    total = playlists.body.total;
+
+    ctx.loading.update({ description: `Fetched ${offset} of ${total}` });
+
+    hasMore = playlists.body.next !== null;
+
+    const selfPlaylists = playlists.body.items.filter(
+      (playlist) => playlist.owner.id === userId
+    );
+
+    items.push(...selfPlaylists);
+
+    // avoid rate limiting
+    await sleep(1000);
+  }
+
+  if (cache) {
+    ctx.loading.update({ description: `Caching data...` });
+
+    for (const playlist of items) {
+      await prisma.playlist.upsert({
+        where: { id: playlist.id },
+        update: {
+          name: playlist.name,
+          public: playlist.public,
+          collaborative: playlist.collaborative,
+          total: playlist.tracks.total,
+          description: playlist.description,
+        },
+        create: {
+          id: playlist.id,
+          name: playlist.name,
+          public: playlist.public,
+          collaborative: playlist.collaborative,
+          total: playlist.tracks.total,
+          description: playlist.description,
+        },
+      });
+    }
+  }
+
+  return items;
 }
 
 export default spotifyApi;
