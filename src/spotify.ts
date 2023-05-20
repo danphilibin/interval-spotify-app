@@ -9,7 +9,7 @@ const spotifyApi = new SpotifyWebApi({
 });
 
 // to save time in other places, we'll format all fetched tracks into this shape
-type SpotifyTrackObject = {
+export type SpotifyTrackObject = {
   id: string;
   name: string;
   artists: string[];
@@ -111,9 +111,11 @@ export async function collectTracksForMonth({ date }: { date: Date }) {
 }
 
 export async function collectTracksFromPlaylist({
-  playlistId,
+  id,
+  name,
 }: {
-  playlistId: string;
+  id: string;
+  name?: string;
 }) {
   const allTracks: SpotifyTrackObject[] = [];
   let total = 0;
@@ -124,14 +126,16 @@ export async function collectTracksFromPlaylist({
   while (hasMore) {
     const offset = allTracks.length;
 
-    const tracks = await spotifyApi.getPlaylistTracks(playlistId, {
+    const tracks = await spotifyApi.getPlaylistTracks(id, {
       limit: SPOTIFY_MAX_LIMIT,
       offset,
     });
 
     total = tracks.body.total;
 
-    ctx.loading.update({ description: `Fetched ${offset} of ${total}` });
+    ctx.loading.update({
+      description: `Fetched ${offset + tracks.body.items.length} of ${total}`,
+    });
 
     hasMore = tracks.body.next !== null;
 
@@ -144,6 +148,59 @@ export async function collectTracksFromPlaylist({
   }
 
   return allTracks;
+}
+
+export async function cachePlaylistTracks(
+  playlistId: string,
+  tracks: SpotifyTrackObject[]
+) {
+  await ctx.loading.start(`Caching ${tracks.length} tracks...`);
+
+  const playlist = await spotifyApi.getPlaylist(playlistId);
+
+  // sync playlist details
+  await prisma.playlist.upsert({
+    where: { id: playlistId },
+    create: {
+      id: playlistId,
+      name: playlist.body.name,
+      total: playlist.body.tracks.total,
+    },
+    update: {
+      name: playlist.body.name,
+      total: playlist.body.tracks.total,
+    },
+  });
+
+  // remove existing playlist associations
+  await prisma.playlistToTrack.deleteMany({
+    where: { playlistId },
+  });
+
+  for (const track of tracks) {
+    const data = {
+      name: track.name,
+      artistsString: track.artists.join(", "),
+      spotifyUri: track.spotifyUri,
+      album: track.album,
+      imageUrl: track.coverImage,
+    };
+
+    await prisma.track.upsert({
+      where: { id: track.id },
+      create: {
+        id: track.id,
+        ...data,
+      },
+      update: data,
+    });
+
+    await prisma.playlistToTrack.upsert({
+      where: { playlistId_trackId: { playlistId, trackId: track.id } },
+      create: { playlistId, trackId: track.id },
+      update: {},
+    });
+  }
 }
 
 export async function collectPlaylists({ cache = false }: { cache?: boolean }) {

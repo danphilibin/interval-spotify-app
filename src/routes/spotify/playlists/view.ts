@@ -37,8 +37,20 @@ export default new Page({
           data: tracks,
           columns: [
             {
-              label: "Name",
-              accessorKey: "name",
+              label: "Image",
+              renderCell: (row) => ({
+                image: {
+                  url: row.imageUrl,
+                  width: "thumbnail",
+                },
+                // url: row.track.uri,
+              }),
+            },
+            {
+              label: "Title",
+              renderCell: (row) => ({
+                label: `**${row.name}**  \n${row.artistsString}`,
+              }),
             },
             {
               label: "Artist",

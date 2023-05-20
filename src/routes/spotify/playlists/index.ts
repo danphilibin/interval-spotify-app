@@ -54,11 +54,6 @@ export default new Page({
               renderCell: (playlist) => playlist.total,
             },
             {
-              label: "Cached?",
-              renderCell: (playlist) =>
-                playlist._count.tracks > 0 ? "✅" : "",
-            },
-            {
               label: "Collaborative?",
               renderCell: (playlist) => playlist.collaborative,
             },
@@ -77,11 +72,6 @@ export default new Page({
               label: row.isFavorite ? "Unfavorite" : "Mark as favorite",
               route: "spotify/playlists/toggle_favorite",
               params: { id: row.id },
-            },
-            {
-              label: "Cache contents",
-              route: "spotify/playlists/cache_contents",
-              params: { playlistId: row.id },
             },
           ],
         }),

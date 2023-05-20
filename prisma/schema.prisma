@@ -48,6 +48,7 @@ model Track {
   spotifyUri    String
   artistsString String
   album         String
+  imageUrl      String?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   playlists     PlaylistToTrack[]
