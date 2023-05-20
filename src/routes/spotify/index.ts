@@ -52,12 +52,12 @@ export default new Page({
           ],
         }),
         io.display.heading("Recent likes", {
-          menuItems: [
-            {
-              label: "Create playlist",
-              route: "spotify/monthlyLikesPlaylist",
-            },
-          ],
+          // menuItems: [
+          //   {
+          //     label: "Create playlist",
+          //     route: "spotify/monthlyLikesPlaylist",
+          //   },
+          // ],
         }),
         io.display.table("", {
           data: liked.body.items,
