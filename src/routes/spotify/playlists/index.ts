@@ -11,7 +11,18 @@ export default new Page({
       return maybeAuth;
     }
 
-    const playlists = await prisma.playlist.findMany();
+    const playlists = await prisma.playlist.findMany({
+      orderBy: {
+        isFavorite: "desc",
+      },
+      include: {
+        _count: {
+          select: {
+            tracks: true,
+          },
+        },
+      },
+    });
 
     return new Layout({
       title: "Playlists",
@@ -29,7 +40,9 @@ export default new Page({
             {
               label: "Name",
               renderCell: (playlist) => ({
-                label: `**${playlist.name}**${
+                label: `**${playlist.isFavorite ? "⭐ " : ""}${
+                  playlist.name
+                }**${
                   playlist.description ? "  \n" + playlist.description : ""
                 }`,
                 route: "spotify/playlists/view",
@@ -39,6 +52,11 @@ export default new Page({
             {
               label: "Tracks",
               renderCell: (playlist) => playlist.total,
+            },
+            {
+              label: "Cached?",
+              renderCell: (playlist) =>
+                playlist._count.tracks > 0 ? "✅" : "",
             },
             {
               label: "Collaborative?",
@@ -53,6 +71,11 @@ export default new Page({
             {
               label: "View",
               route: "spotify/playlists/view",
+              params: { id: row.id },
+            },
+            {
+              label: row.isFavorite ? "Unfavorite" : "Mark as favorite",
+              route: "spotify/playlists/toggle_favorite",
               params: { id: row.id },
             },
             {

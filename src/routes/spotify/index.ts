@@ -2,6 +2,7 @@ import { io, Layout, Page } from "@interval/sdk";
 import { requireSpotifyPageAuth } from "../../auth";
 import spotifyApi from "../../spotify";
 import { getRelativeDateString } from "../../util";
+import prisma from "../../prisma";
 
 export default new Page({
   name: "Spotify",
@@ -13,14 +14,18 @@ export default new Page({
       return maybeAuth;
     }
 
-    const [topArtists, topTracks, myProfile, liked] = await Promise.all([
-      spotifyApi.getMyTopArtists({ limit: 1, time_range: "medium_term" }),
-      spotifyApi.getMyTopTracks({ limit: 1, time_range: "medium_term" }),
-      spotifyApi.getMe(),
-      spotifyApi.getMySavedTracks({
-        limit: 50,
-      }),
-    ]);
+    const [topArtists, topTracks, myProfile, liked, playlistTracks] =
+      await Promise.all([
+        spotifyApi.getMyTopArtists({ limit: 1, time_range: "medium_term" }),
+        spotifyApi.getMyTopTracks({ limit: 1, time_range: "medium_term" }),
+        spotifyApi.getMe(),
+        spotifyApi.getMySavedTracks({
+          limit: 50,
+        }),
+        prisma.playlistToTrack.findMany({
+          include: { playlist: true },
+        }),
+      ]);
 
     return new Layout({
       title: `🎧 ${myProfile.body.display_name}'s Spotify`,
@@ -64,19 +69,25 @@ export default new Page({
                   url: row.track.album.images[0].url,
                   width: "thumbnail",
                 },
+                // url: row.track.uri,
               }),
             },
             {
               label: "Title",
               renderCell: (row) => ({
-                label: row.track.name,
-                url: row.track.uri,
+                label: `**${row.track.name}**  \n${row.track.artists
+                  .map((a) => a.name)
+                  .join(", ")}`,
               }),
             },
             {
-              label: "Artist",
-              renderCell: (row) =>
-                row.track.artists.map((a) => a.name).join(", "),
+              label: "In playlists",
+              renderCell: (row) => ({
+                label: playlistTracks
+                  .filter((pt) => pt.trackId === row.track.id)
+                  .map((pt) => pt.playlist.name)
+                  .join(", "),
+              }),
             },
             {
               label: "Date added",

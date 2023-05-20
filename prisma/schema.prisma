@@ -17,6 +17,7 @@ model Playlist {
   collaborative Boolean           @default(false)
   public        Boolean           @default(false)
   description   String?
+  isFavorite    Boolean           @default(false)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   tracks        PlaylistToTrack[]
