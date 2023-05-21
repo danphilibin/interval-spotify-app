@@ -9,6 +9,23 @@ const spotifyApi = new SpotifyWebApi({
   clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
 });
 
+// https://developer.spotify.com/documentation/general/guides/scopes/#scopes
+export const spotifyScopes = [
+  "user-library-read",
+  "user-library-modify",
+  "user-read-private",
+  "user-read-recently-played",
+  // "user-read-playback-position",
+  // "user-read-playback-state",
+  // "user-read-currently-playing",
+  // "user-modify-playback-state",
+  "playlist-modify-public",
+  "playlist-modify-private",
+  "playlist-read-private",
+  "playlist-read-collaborative",
+  "user-top-read",
+];
+
 // to save time in other places, we'll format all fetched tracks into this shape
 export type SpotifyTrackObject = {
   id: string;

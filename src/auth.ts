@@ -1,8 +1,6 @@
 import { ctx, io, Layout } from "@interval/sdk";
-import spotifyApi from "./spotify";
-import fs from "fs";
-import { getSetting, sleep, spotifyScopes, updateSetting } from "./util";
-import path from "path";
+import spotifyApi, { spotifyScopes } from "./spotify";
+import { getSetting, sleep, updateSetting } from "./util";
 import prisma from "./prisma";
 
 export const AUTHORIZE_ACTION_NAME = "spotify/authorize";
@@ -22,7 +20,7 @@ function checkRequiredKeys() {
 }
 
 export async function checkAuth(): Promise<boolean> {
-  const accessToken = await getSetting("accessToken");
+  const accessToken = await getSetting("spotifyAccessToken");
 
   if (!accessToken) return false;
 
@@ -67,7 +65,7 @@ export async function checkAuth(): Promise<boolean> {
       throw error;
     }
 
-    await updateSetting("accessToken", null);
+    await updateSetting("spotifyAccessToken", null);
     return false;
   }
 }
@@ -102,7 +100,7 @@ export async function requireSpotifyAuth() {
   if (authCode) {
     const tokens = await spotifyApi.authorizationCodeGrant(authCode);
 
-    await updateSetting("accessToken", tokens.body.access_token);
+    await updateSetting("spotifyAccessToken", tokens.body.access_token);
 
     if (resumeAction) {
       await ctx.redirect({ action: resumeAction });

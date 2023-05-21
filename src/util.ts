@@ -1,5 +1,6 @@
 import { ctx } from "@interval/sdk";
 import prisma from "./prisma";
+import { SettingsName } from "@prisma/client";
 
 export function splitArrayIntoBatches(array: any[], size: number) {
   const batches = [];
@@ -73,27 +74,7 @@ export function getRelativeDateString(date: Date) {
   return formatter.format(-diffYears, "year");
 }
 
-// https://developer.spotify.com/documentation/general/guides/scopes/#scopes
-export const spotifyScopes = [
-  "user-library-read",
-  "user-library-modify",
-  "user-read-private",
-  "user-read-recently-played",
-  // "user-read-playback-position",
-  // "user-read-playback-state",
-  // "user-read-currently-playing",
-  // "user-modify-playback-state",
-  "playlist-modify-public",
-  "playlist-modify-private",
-  "playlist-read-private",
-  "playlist-read-collaborative",
-  "user-top-read",
-];
-
-// sqlite doesn't support enums
-type Settings = "accessToken" | "spotifyDisplayName" | "spotifyUserId";
-
-export async function updateSetting(name: Settings, value: string) {
+export async function updateSetting(name: SettingsName, value: string) {
   return prisma.settings.upsert({
     where: { name },
     create: { name, value },
@@ -101,7 +82,7 @@ export async function updateSetting(name: Settings, value: string) {
   });
 }
 
-export async function getSetting(name: Settings) {
+export async function getSetting(name: SettingsName) {
   const setting = await prisma.settings.findUnique({
     where: { name },
   });

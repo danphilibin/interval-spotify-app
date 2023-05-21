@@ -1,4 +1,0 @@
--- AlterTable
-ALTER TABLE "Track" ADD COLUMN "bpm" INTEGER;
-ALTER TABLE "Track" ADD COLUMN "duration" INTEGER;
-ALTER TABLE "Track" ADD COLUMN "key" TEXT;
