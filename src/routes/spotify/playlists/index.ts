@@ -1,6 +1,7 @@
 import { io, Page, Layout } from "@interval/sdk";
 import { requireSpotifyPageAuth } from "../../../auth";
 import prisma from "../../../prisma";
+import { collectPlaylists } from "../../../spotify";
 
 export default new Page({
   name: "Playlists",
@@ -23,6 +24,10 @@ export default new Page({
         },
       },
     });
+
+    if (playlists.length === 0) {
+      await collectPlaylists({ cache: true });
+    }
 
     return new Layout({
       title: "Playlists",
