@@ -2,6 +2,7 @@ import { io, Page, Layout } from "@interval/sdk";
 import { requireSpotifyPageAuth } from "../../../auth";
 import prisma from "../../../prisma";
 import { collectPlaylists } from "../../../spotify";
+import { Prisma } from "@prisma/client";
 
 export default new Page({
   name: "Playlists",
@@ -12,7 +13,7 @@ export default new Page({
       return maybeAuth;
     }
 
-    const playlists = await prisma.playlist.findMany({
+    const playlistArgs: Prisma.PlaylistFindManyArgs = {
       orderBy: {
         isFavorite: "desc",
       },
@@ -23,10 +24,13 @@ export default new Page({
           },
         },
       },
-    });
+    };
+
+    let playlists = await prisma.playlist.findMany(playlistArgs);
 
     if (playlists.length === 0) {
       await collectPlaylists({ cache: true });
+      playlists = await prisma.playlist.findMany(playlistArgs);
     }
 
     return new Layout({
