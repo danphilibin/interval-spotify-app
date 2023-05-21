@@ -34,7 +34,6 @@ function writeAccessTokenToFileSystem(tokens: typeof accessTokens) {
 }
 
 function getAccessTokenFromFileSystem() {
-  if (process.env.NODE_ENV !== "development") return null;
   try {
     const tokens = fs.readFileSync(
       path.join(__dirname, "../.access-token"),
