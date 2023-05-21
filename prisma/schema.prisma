@@ -44,7 +44,7 @@ enum SettingsName {
 
 model Settings {
   name      SettingsName @id
-  value     String       @db.Text
+  value     String?      @db.Text
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 }
