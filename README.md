@@ -2,7 +2,7 @@ Contains some [Interval](https://interval.com) utilities for working with Spotif
 
 Click the button below to deploy this app on [Railway](https://railway.app):
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/guuaR3?referralCode=PWTwBP)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/tkbFsY?referralCode=PWTwBP)
 
 Requires a Spotify account and a registered Spotify app. [You can register a new app here.](https://developer.spotify.com/dashboard/login)
 
