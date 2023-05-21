@@ -1,10 +1,9 @@
 import { Action, io } from "@interval/sdk";
 import { requireSpotifyAuth } from "../../auth";
-import { requireParam, sleep } from "../../util";
+import { requireParam } from "../../util";
 import prisma from "../../prisma";
 import spotifyApi, {
   cachePlaylistTracks,
-  collectAndCachePlaylistTracks,
   collectTracksFromPlaylist,
 } from "../../spotify";
 
@@ -16,7 +15,7 @@ export default new Action({
 
     const trackId = requireParam("trackId");
 
-    const track = await spotifyApi.getTrack(trackId);
+    const track = (await spotifyApi.getTrack(trackId)).body;
 
     const allPlaylists = await prisma.playlist.findMany({
       orderBy: { createdAt: "asc" },
@@ -24,13 +23,11 @@ export default new Action({
 
     const { playlists } = await io.group({
       cover: io.display.image("", {
-        url: track.body.album.images[0]?.url,
+        url: track.album.images[0]?.url,
         size: "thumbnail",
       }),
       track: io.display.markdown(
-        `**${track.body.name}**  \n${track.body.artists
-          .map((a) => a.name)
-          .join(", ")} `
+        `**${track.name}**  \n${track.artists.map((a) => a.name).join(", ")} `
       ),
       playlists: io
         .search("Select playlist(s)", {
@@ -56,10 +53,17 @@ export default new Action({
 
       await spotifyApi.addTracksToPlaylist(id, [`spotify:track:${trackId}`]);
 
-      // wait for spotify to update
-      await sleep(1000);
-
-      await collectAndCachePlaylistTracks({ id, name });
+      // cache single track
+      await cachePlaylistTracks(
+        id,
+        [
+          {
+            track,
+            added_at: new Date().toISOString(),
+          },
+        ],
+        { isFullSync: false }
+      );
 
       await io.display.markdown(`Added track to ${name}`);
     }

@@ -168,8 +168,11 @@ export async function collectTracksFromPlaylist({
 
 export async function cachePlaylistTracks(
   playlistId: string,
-  tracks: SpotifyApi.PlaylistTrackObject[]
+  tracks: Pick<SpotifyApi.PlaylistTrackObject, "added_at" | "track">[],
+  options: { isFullSync?: boolean } = {}
 ) {
+  const { isFullSync = true } = options;
+
   await ctx.loading.start(`Caching ${tracks.length} tracks...`);
 
   const playlist = await spotifyApi.getPlaylist(playlistId);
@@ -188,10 +191,12 @@ export async function cachePlaylistTracks(
     },
   });
 
-  // remove existing playlist associations
-  await prisma.playlistToTrack.deleteMany({
-    where: { playlistId },
-  });
+  if (isFullSync) {
+    // remove existing playlist associations
+    await prisma.playlistToTrack.deleteMany({
+      where: { playlistId },
+    });
+  }
 
   const tracksWithMetadata = await getAudioAnalysisForTracks(
     tracks.map((t) => t.track)
@@ -244,7 +249,7 @@ export async function collectAndCachePlaylistTracks(playlist: {
   await cachePlaylistTracks(playlist.id, tracks);
 }
 
-async function getAudioAnalysisForTracks<
+export async function getAudioAnalysisForTracks<
   T extends SpotifyApi.TrackObjectSimplified
 >(
   tracks: T[]
