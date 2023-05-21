@@ -1,4 +1,4 @@
-import { Action } from "@interval/sdk";
+import { Action, io } from "@interval/sdk";
 import { requireParam } from "../../../util";
 import prisma from "../../../prisma";
 import {
@@ -19,6 +19,8 @@ export default new Action({
     const playlist = await prisma.playlist.findUniqueOrThrow({
       where: { id },
     });
+
+    await io.display.markdown(`### ${playlist.name}\n${playlist.total} tracks`);
 
     const isFavoriting = !playlist.isFavorite;
 

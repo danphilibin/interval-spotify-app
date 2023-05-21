@@ -87,6 +87,12 @@ export default new Page({
               route: "spotify/playlists/toggle_favorite",
               params: { id: row.id },
             },
+            {
+              label: "Delete",
+              route: "spotify/playlists/delete",
+              params: { id: row.id },
+              theme: "danger",
+            },
           ],
         }),
         io.display.markdown(
