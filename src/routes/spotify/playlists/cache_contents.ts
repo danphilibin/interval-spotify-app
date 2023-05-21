@@ -1,9 +1,6 @@
 import { Action } from "@interval/sdk";
 import { requireParam } from "../../../util";
-import spotifyApi, {
-  cachePlaylistTracks,
-  collectTracksFromPlaylist,
-} from "../../../spotify";
+import spotifyApi, { collectAndCachePlaylistTracks } from "../../../spotify";
 import { requireSpotifyPageAuth } from "../../../auth";
 
 export default new Action({
@@ -16,7 +13,6 @@ export default new Action({
 
     const playlist = await spotifyApi.getPlaylist(playlistId);
 
-    const tracks = await collectTracksFromPlaylist(playlist.body);
-    await cachePlaylistTracks(playlistId, tracks);
+    await collectAndCachePlaylistTracks(playlist.body);
   },
 });

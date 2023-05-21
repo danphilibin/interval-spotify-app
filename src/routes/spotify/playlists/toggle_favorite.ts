@@ -3,6 +3,7 @@ import { requireParam } from "../../../util";
 import prisma from "../../../prisma";
 import {
   cachePlaylistTracks,
+  collectAndCachePlaylistTracks,
   collectTracksFromPlaylist,
 } from "../../../spotify";
 import { requireSpotifyAuth } from "../../../auth";
@@ -29,8 +30,7 @@ export default new Action({
     });
 
     if (isFavoriting) {
-      const tracks = await collectTracksFromPlaylist(playlist);
-      await cachePlaylistTracks(playlist.id, tracks);
+      await collectAndCachePlaylistTracks(playlist);
     } else {
       // remove associations for non-cached playlists so we don't end up with a bunch of dead data
       await prisma.playlistToTrack.deleteMany({

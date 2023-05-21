@@ -236,6 +236,14 @@ export async function cachePlaylistTracks(
   }
 }
 
+export async function collectAndCachePlaylistTracks(playlist: {
+  id: string;
+  name?: string;
+}) {
+  const tracks = await collectTracksFromPlaylist(playlist);
+  await cachePlaylistTracks(playlist.id, tracks);
+}
+
 async function getAudioAnalysisForTracks<
   T extends SpotifyApi.TrackObjectSimplified
 >(

@@ -7,6 +7,23 @@ import {
   requireParam,
   secondsToMinutes,
 } from "../../../util";
+import spotifyApi, { collectTracksFromPlaylist } from "../../../spotify";
+import { PlaylistToTrack, Prisma, Track } from "@prisma/client";
+
+type PlaylistTracks = (PlaylistToTrack & {
+  track: Pick<
+    Track,
+    | "album"
+    | "artistsString"
+    | "duration"
+    | "id"
+    | "imageUrl"
+    | "key"
+    | "name"
+    | "tempo"
+    | "spotifyUri"
+  >;
+})[];
 
 export default new Page({
   name: "View playlist",
@@ -22,8 +39,41 @@ export default new Page({
 
     const playlist = await prisma.playlist.findUniqueOrThrow({
       where: { id: playlistId },
-      include: { tracks: { include: { track: true } } },
+      include: {
+        tracks: {
+          include: { track: true },
+          orderBy: { createdAt: "asc" },
+        },
+      },
     });
+
+    const spotifyPlaylist = await spotifyApi.getPlaylist(playlist.id);
+
+    let tracks: PlaylistTracks = playlist.tracks;
+
+    if (!tracks.length && spotifyPlaylist.body.tracks.total) {
+      const playlistTracks = await collectTracksFromPlaylist(playlist);
+
+      tracks = playlistTracks.map((track, id) => ({
+        ...track,
+        id,
+        createdAt: new Date(track.added_at),
+        updatedAt: new Date(track.added_at),
+        playlistId: playlist.id,
+        trackId: track.track.id,
+        track: {
+          id: track.track.id,
+          name: track.track.name,
+          artistsString: track.track.artists.map((a) => a.name).join(", "),
+          spotifyUri: track.track.uri,
+          album: track.track.album.name,
+          imageUrl: track.track.album.images[0]?.url,
+          duration: null,
+          key: null,
+          tempo: null,
+        },
+      }));
+    }
 
     return new Layout({
       title: playlist.name,
@@ -37,7 +87,7 @@ export default new Page({
       ],
       children: [
         io.display.table("Tracks in playlist", {
-          data: playlist.tracks,
+          data: tracks,
           columns: [
             {
               label: "Image",
@@ -62,25 +112,36 @@ export default new Page({
             {
               label: "Key",
               renderCell: (row) =>
-                row.track.key ? numericKeyToCamelotKey(row.track.key) : "N/A",
+                row.track.key ? numericKeyToCamelotKey(row.track.key) : "-",
             },
             {
               label: "BPM",
               renderCell: (row) =>
-                row.track.tempo ? `${Math.round(row.track.tempo)}` : "N/A",
+                row.track.tempo ? `${Math.round(row.track.tempo)}` : "-",
             },
             {
               label: "Duration",
               renderCell: (row) =>
                 row.track.duration
                   ? secondsToMinutes(row.track.duration / 1000)
-                  : "N/A",
+                  : "-",
             },
             {
               label: "Added",
               renderCell: (row) => ({
                 label: getRelativeDateString(row.createdAt),
               }),
+            },
+          ],
+          rowMenuItems: (row) => [
+            {
+              label: "Listen on Spotify",
+              url: row.track.spotifyUri,
+            },
+            {
+              label: "Add to playlist",
+              route: "spotify/add_track_to_playlist",
+              params: { trackId: row.track.id },
             },
           ],
         }),

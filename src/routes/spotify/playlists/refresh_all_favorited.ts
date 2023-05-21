@@ -2,6 +2,7 @@ import { Action, io, ctx } from "@interval/sdk";
 import prisma from "../../../prisma";
 import {
   cachePlaylistTracks,
+  collectAndCachePlaylistTracks,
   collectTracksFromPlaylist,
 } from "../../../spotify";
 import { sleep } from "../../../util";
@@ -30,8 +31,7 @@ export default new Action({
 
     for (const playlist of playlists) {
       await io.display.markdown(`Refreshing ${playlist.name}...`);
-      const tracks = await collectTracksFromPlaylist(playlist);
-      await cachePlaylistTracks(playlist.id, tracks);
+      await collectAndCachePlaylistTracks(playlist);
       // avoid rate limiting
       await sleep(2000);
     }
