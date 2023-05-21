@@ -105,11 +105,11 @@ export default new Page({
               route: "spotify/utilities/analyze_track",
               params: { trackId: row.track.id },
             },
-            ...row.track.artists.map((a) => ({
-              label: `View ${a.name}`,
-              route: "spotify/artist",
-              params: { artistId: a.id },
-            })),
+            {
+              label: "Add to playlist",
+              route: "spotify/add_track_to_playlist",
+              params: { trackId: row.track.id },
+            },
           ],
         }),
       ],

@@ -139,6 +139,11 @@ export default new Page({
               url: row.track.spotifyUri,
             },
             {
+              label: "Analyze track",
+              route: "spotify/utilities/analyze_track",
+              params: { trackId: row.track.id },
+            },
+            {
               label: "Add to playlist",
               route: "spotify/add_track_to_playlist",
               params: { trackId: row.track.id },
