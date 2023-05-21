@@ -1,12 +1,9 @@
 import { ctx, io, Layout } from "@interval/sdk";
 import spotifyApi from "./spotify";
 import fs from "fs";
-import { sleep, spotifyScopes } from "./util";
+import { getSetting, sleep, spotifyScopes, updateSetting } from "./util";
 import path from "path";
 import prisma from "./prisma";
-
-export const accessTokens: Record<string, string> =
-  getAccessTokenFromFileSystem() ?? {};
 
 export const AUTHORIZE_ACTION_NAME = "spotify/authorize";
 
@@ -24,31 +21,13 @@ function checkRequiredKeys() {
   }
 }
 
-function writeAccessTokenToFileSystem(tokens: typeof accessTokens) {
-  // write the access token to the file system, so it can be reused between server restarts.
-  // this is not a secure way to store access tokens, but it's fine for this demo
-  fs.writeFileSync(
-    path.join(__dirname, "../.access-token"),
-    JSON.stringify(tokens)
-  );
-}
-
-function getAccessTokenFromFileSystem() {
-  try {
-    const tokens = fs.readFileSync(
-      path.join(__dirname, "../.access-token"),
-      "utf8"
-    );
-    if (tokens) return JSON.parse(tokens);
-  } catch (error) {}
-  return null;
-}
-
 export async function checkAuth(): Promise<boolean> {
-  if (!accessTokens[ctx.user.email]) return false;
+  const accessToken = await getSetting("accessToken");
+
+  if (!accessToken) return false;
 
   try {
-    spotifyApi.setAccessToken(accessTokens[ctx.user.email]);
+    spotifyApi.setAccessToken(accessToken);
 
     const meReq = await spotifyApi.getMe();
 
@@ -88,7 +67,7 @@ export async function checkAuth(): Promise<boolean> {
       throw error;
     }
 
-    writeAccessTokenToFileSystem({});
+    await updateSetting("accessToken", null);
     return false;
   }
 }
@@ -123,8 +102,7 @@ export async function requireSpotifyAuth() {
   if (authCode) {
     const tokens = await spotifyApi.authorizationCodeGrant(authCode);
 
-    accessTokens[ctx.user.email] = tokens.body.access_token;
-    writeAccessTokenToFileSystem(accessTokens);
+    await updateSetting("accessToken", tokens.body.access_token);
 
     if (resumeAction) {
       await ctx.redirect({ action: resumeAction });

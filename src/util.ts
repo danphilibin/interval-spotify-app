@@ -90,18 +90,23 @@ export const spotifyScopes = [
   "user-top-read",
 ];
 
-type Settings = "spotifyDisplayName" | "spotifyUserId";
+// sqlite doesn't support enums
+type Settings = "accessToken" | "spotifyDisplayName" | "spotifyUserId";
+
+export async function updateSetting(name: Settings, value: string) {
+  return prisma.settings.upsert({
+    where: { name },
+    create: { name, value },
+    update: { value },
+  });
+}
 
 export async function getSetting(name: Settings) {
   const setting = await prisma.settings.findUnique({
     where: { name },
   });
 
-  if (!setting) {
-    throw new Error(`Setting not found: ${name}`);
-  }
-
-  return setting.value;
+  return setting?.value ?? null;
 }
 
 export function numericKeyToString(key: number): string {
