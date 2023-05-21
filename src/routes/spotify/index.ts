@@ -1,6 +1,6 @@
 import { io, Layout, Page } from "@interval/sdk";
 import { requireSpotifyPageAuth } from "../../auth";
-import spotifyApi from "../../spotify";
+import spotifyApi, { SPOTIFY_MAX_LIMIT } from "../../spotify";
 import { getRelativeDateString } from "../../util";
 import prisma from "../../prisma";
 
@@ -14,14 +14,11 @@ export default new Page({
       return maybeAuth;
     }
 
-    const [topArtists, topTracks, myProfile, liked, playlistTracks] =
+    const [topArtists, topTracks, myProfile, playlistTracks] =
       await Promise.all([
         spotifyApi.getMyTopArtists({ limit: 1, time_range: "medium_term" }),
         spotifyApi.getMyTopTracks({ limit: 1, time_range: "medium_term" }),
         spotifyApi.getMe(),
-        spotifyApi.getMySavedTracks({
-          limit: 50,
-        }),
         prisma.playlistToTrack.findMany({
           include: { playlist: true },
         }),
@@ -60,7 +57,17 @@ export default new Page({
           // ],
         }),
         io.display.table("", {
-          data: liked.body.items,
+          defaultPageSize: SPOTIFY_MAX_LIMIT,
+          getData: async ({ offset }) => {
+            const { body } = await spotifyApi.getMySavedTracks({
+              limit: SPOTIFY_MAX_LIMIT,
+              offset,
+            });
+            return {
+              totalRecords: body.total,
+              data: body.items,
+            };
+          },
           columns: [
             {
               label: "Image",
