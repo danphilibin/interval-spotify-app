@@ -134,8 +134,8 @@ export async function collectTracksFromPlaylist({
 }: {
   id: string;
   name?: string;
-}) {
-  const allTracks: SpotifyTrackObject[] = [];
+}): Promise<SpotifyApi.PlaylistTrackObject[]> {
+  const allTracks: SpotifyApi.PlaylistTrackObject[] = [];
   let total = 0;
   let hasMore = true;
 
@@ -160,9 +160,7 @@ export async function collectTracksFromPlaylist({
     // avoid rate limiting
     await sleep(1000);
 
-    allTracks.push(
-      ...convertTrackObjects(tracks.body.items.map((item) => item.track))
-    );
+    allTracks.push(...tracks.body.items);
   }
 
   return allTracks;
@@ -170,7 +168,7 @@ export async function collectTracksFromPlaylist({
 
 export async function cachePlaylistTracks(
   playlistId: string,
-  tracks: SpotifyTrackObject[]
+  tracks: SpotifyApi.PlaylistTrackObject[]
 ) {
   await ctx.loading.start(`Caching ${tracks.length} tracks...`);
 
@@ -195,19 +193,23 @@ export async function cachePlaylistTracks(
     where: { playlistId },
   });
 
-  const tracksWithMetadata = await getAudioAnalysisForTracks(tracks);
+  const tracksWithMetadata = await getAudioAnalysisForTracks(
+    tracks.map((t) => t.track)
+  );
 
-  for (const track of tracksWithMetadata) {
+  for (const { track, added_at } of tracks) {
+    const metadata = tracksWithMetadata.find((t) => t.id === track.id);
+
     const data: Prisma.TrackCreateInput = {
       id: track.id,
       name: track.name,
-      artistsString: track.artists.join(", "),
-      spotifyUri: track.spotifyUri,
-      album: track.album,
-      imageUrl: track.coverImage,
-      duration: track.duration,
-      key: track.key,
-      tempo: track.tempo,
+      artistsString: track.artists.map((a) => a.name).join(", "),
+      spotifyUri: track.uri,
+      album: track.album.name,
+      imageUrl: track.album.images[0]?.url,
+      duration: metadata?.duration,
+      key: metadata?.key,
+      tempo: metadata?.tempo,
     };
 
     await prisma.track.upsert({
@@ -217,15 +219,29 @@ export async function cachePlaylistTracks(
     });
 
     await prisma.playlistToTrack.upsert({
-      where: { playlistId_trackId: { playlistId, trackId: track.id } },
-      create: { playlistId, trackId: track.id },
-      update: {},
+      where: {
+        playlistId_trackId: { playlistId, trackId: track.id },
+      },
+      create: {
+        playlistId,
+        trackId: track.id,
+        createdAt: new Date(added_at),
+        updatedAt: new Date(added_at),
+      },
+      update: {
+        createdAt: new Date(added_at),
+        updatedAt: new Date(added_at),
+      },
     });
   }
 }
 
-async function getAudioAnalysisForTracks(tracks: SpotifyTrackObject[]): Promise<
-  (SpotifyTrackObject & {
+async function getAudioAnalysisForTracks<
+  T extends SpotifyApi.TrackObjectSimplified
+>(
+  tracks: T[]
+): Promise<
+  (T & {
     tempo?: number;
     key?: number;
     duration?: number;

@@ -2,6 +2,7 @@ import { io, Page, Layout } from "@interval/sdk";
 import { requireSpotifyPageAuth } from "../../../auth";
 import prisma from "../../../prisma";
 import {
+  getRelativeDateString,
   numericKeyToCamelotKey,
   requireParam,
   secondsToMinutes,
@@ -24,8 +25,6 @@ export default new Page({
       include: { tracks: { include: { track: true } } },
     });
 
-    const tracks = playlist.tracks.map((t) => t.track);
-
     return new Layout({
       title: playlist.name,
       menuItems: [
@@ -38,42 +37,50 @@ export default new Page({
       ],
       children: [
         io.display.table("Tracks in playlist", {
-          data: tracks,
+          data: playlist.tracks,
           columns: [
             {
               label: "Image",
               renderCell: (row) => ({
                 image: {
-                  url: row.imageUrl,
+                  url: row.track.imageUrl,
                   width: "thumbnail",
                 },
-                // url: row.track.uri,
+                // url: row.track.track.uri,
               }),
             },
             {
               label: "Title",
               renderCell: (row) => ({
-                label: `**${row.name}**  \n${row.artistsString}`,
+                label: `**${row.track.name}**  \n${row.track.artistsString}`,
               }),
             },
             {
               label: "Artist",
-              accessorKey: "artistsString",
+              renderCell: (row) => row.track.artistsString,
             },
             {
               label: "Key",
               renderCell: (row) =>
-                row.key ? numericKeyToCamelotKey(row.key) : "N/A",
+                row.track.key ? numericKeyToCamelotKey(row.track.key) : "N/A",
             },
             {
               label: "BPM",
               renderCell: (row) =>
-                row.tempo ? `${Math.round(row.tempo)} BPM` : "N/A",
+                row.track.tempo ? `${Math.round(row.track.tempo)}` : "N/A",
             },
             {
               label: "Duration",
               renderCell: (row) =>
-                row.duration ? secondsToMinutes(row.duration / 1000) : "N/A",
+                row.track.duration
+                  ? secondsToMinutes(row.track.duration / 1000)
+                  : "N/A",
+            },
+            {
+              label: "Added",
+              renderCell: (row) => ({
+                label: getRelativeDateString(row.createdAt),
+              }),
             },
           ],
         }),

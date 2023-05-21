@@ -14,9 +14,14 @@ export default new Page({
     }
 
     const playlistArgs: Prisma.PlaylistFindManyArgs = {
-      orderBy: {
-        isFavorite: "desc",
-      },
+      orderBy: [
+        {
+          isFavorite: "desc",
+        },
+        {
+          createdAt: "asc",
+        },
+      ],
       include: {
         _count: {
           select: {
@@ -84,6 +89,9 @@ export default new Page({
             },
           ],
         }),
+        io.display.markdown(
+          "Looking for new playlists? Click 'Refresh cache' at the top of the page to reload your playlists."
+        ),
       ],
     });
   },

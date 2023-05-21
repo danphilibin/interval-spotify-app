@@ -33,7 +33,6 @@ export default new Action({
       const tracks = await collectTracksFromPlaylist(playlist);
       await cachePlaylistTracks(playlist.id, tracks);
       // avoid rate limiting
-      ctx.loading.update("Waiting 2 seconds to avoid rate limiting...");
       await sleep(2000);
     }
   },
