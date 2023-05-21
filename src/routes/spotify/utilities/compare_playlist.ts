@@ -1,12 +1,14 @@
 import { Action, io, ctx } from "@interval/sdk";
-import spotifyApi from "../../spotify";
-import { requireSpotifyAuth } from "../../auth";
-import { sleep } from "../../util";
+import spotifyApi from "../../../spotify";
+import { requireSpotifyAuth } from "../../../auth";
+import { sleep } from "../../../util";
 
 const SPOTIFY_PAGE_LIMIT = 50;
 
 export default new Action({
   name: "Compare playlist with Liked Songs",
+  description:
+    "Compare a playlist with your Liked Songs and see which songs are or aren't in the playlist.",
   handler: async () => {
     await requireSpotifyAuth();
 
@@ -90,30 +92,33 @@ export default new Action({
     );
 
     const { returnValue: selected, choice } = await io.select
-      .table("These songs from Liked Songs are not in the playlist", {
-        helpText: `You can add songs to ${playlist.name} by selecting them below.`,
-        data: songsNotInPlaylist,
-        columns: [
-          {
-            label: "Title",
-            renderCell: (row) => ({
-              label: row.track.name,
+      .table(
+        `These songs from Liked Songs are not in the "${playlist.name}" playlist`,
+        {
+          helpText: `You can add songs to ${playlist.name} by selecting them below.`,
+          data: songsNotInPlaylist,
+          columns: [
+            {
+              label: "Title",
+              renderCell: (row) => ({
+                label: row.track.name,
+                url: row.track.uri,
+              }),
+            },
+            {
+              label: "Artist",
+              renderCell: (row) =>
+                row.track.artists.map((a) => a.name).join(", "),
+            },
+          ],
+          rowMenuItems: (row) => [
+            {
+              label: "Listen on Spotify",
               url: row.track.uri,
-            }),
-          },
-          {
-            label: "Artist",
-            renderCell: (row) =>
-              row.track.artists.map((a) => a.name).join(", "),
-          },
-        ],
-        rowMenuItems: (row) => [
-          {
-            label: "Listen on Spotify",
-            url: row.track.uri,
-          },
-        ],
-      })
+            },
+          ],
+        }
+      )
       .withChoices(["Add selected tracks to playlist", "Exit"]);
 
     // add the selected songs to the playlist

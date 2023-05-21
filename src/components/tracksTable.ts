@@ -51,7 +51,7 @@ export function tracksTable(
       },
       {
         label: "Analyze track",
-        route: "spotify/analyzeTrack",
+        route: "spotify/utilities/analyze_track",
         params: { trackId: row.id },
       },
     ],

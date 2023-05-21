@@ -78,7 +78,7 @@ export default new Page({
             },
             {
               label: "Analyze track",
-              route: "spotify/analyzeTrack",
+              route: "spotify/utilities/analyze_track",
               params: { trackId: row.id },
             },
           ],

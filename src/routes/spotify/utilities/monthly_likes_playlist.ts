@@ -1,11 +1,12 @@
 import { Action, ctx, io } from "@interval/sdk";
-import { monthNames, splitArrayIntoBatches } from "../../util";
-import { requireSpotifyAuth } from "../../auth";
-import spotifyApi, { collectTracksForMonth } from "../../spotify";
+import { monthNames, splitArrayIntoBatches } from "../../../util";
+import { requireSpotifyAuth } from "../../../auth";
+import spotifyApi, { collectTracksForMonth } from "../../../spotify";
 
 export default new Action({
-  name: "Monthly likes playlist",
-  description: "Generate a playlist containing your likes from any month.",
+  name: "Generate monthly likes playlist",
+  description:
+    "Generate a time capsule playlist containing your likes from any month.",
   handler: async () => {
     await requireSpotifyAuth();
 

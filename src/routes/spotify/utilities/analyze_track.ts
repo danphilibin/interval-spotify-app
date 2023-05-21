@@ -1,7 +1,11 @@
 import { io, Layout, Page } from "@interval/sdk";
-import { requireSpotifyPageAuth } from "../../auth";
-import spotifyApi from "../../spotify";
-import { numericKeyToString, requireParam, secondsToMinutes } from "../../util";
+import { requireSpotifyPageAuth } from "../../../auth";
+import spotifyApi from "../../../spotify";
+import {
+  numericKeyToString,
+  requireParam,
+  secondsToMinutes,
+} from "../../../util";
 
 export default new Page({
   name: "Track analysis",
@@ -110,7 +114,7 @@ export default new Page({
             },
             {
               label: "Analyze",
-              action: `spotify/analyzeTrack`,
+              action: `spotify/utilities/analyze_track`,
               params: { trackId: row.id },
             },
           ],
