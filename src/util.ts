@@ -1,6 +1,7 @@
 import { ctx } from "@interval/sdk";
 import prisma from "./prisma";
 import { SettingsName } from "@prisma/client";
+import { getUser } from "./auth";
 
 export function splitArrayIntoBatches(array: any[], size: number) {
   const batches = [];
@@ -75,19 +76,29 @@ export function getRelativeDateString(date: Date) {
 }
 
 export async function updateSetting(name: SettingsName, value: string) {
+  const user = await getUser();
+
+  if (!user) return;
+
   return prisma.settings.upsert({
-    where: { name },
-    create: { name, value },
+    where: { name_userId: { name, userId: user.id } },
+    create: { userId: user.id, name, value },
     update: { value },
   });
 }
 
 export async function getSetting(name: SettingsName) {
+  const user = await getUser();
+
+  if (!user) return null;
+
   const setting = await prisma.settings.findUnique({
-    where: { name },
+    where: { name_userId: { name, userId: user.id } },
   });
 
-  return setting?.value ?? null;
+  if (!setting) return null;
+
+  return setting.value;
 }
 
 export function numericKeyToString(key: number): string {

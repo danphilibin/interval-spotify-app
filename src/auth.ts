@@ -2,6 +2,7 @@ import { ctx, io, Layout } from "@interval/sdk";
 import spotifyApi, { spotifyScopes } from "./spotify";
 import { getSetting, sleep, updateSetting } from "./util";
 import prisma from "./prisma";
+import { User } from "@prisma/client";
 
 export const AUTHORIZE_ACTION_NAME = "spotify/authorize";
 
@@ -19,6 +20,24 @@ function checkRequiredKeys() {
   }
 }
 
+export async function getUser(): Promise<User | null> {
+  return prisma.user.findUnique({
+    where: { intervalEmail: ctx.user.email },
+  });
+}
+
+export async function requireUser(): Promise<User> {
+  const user = await getUser();
+
+  if (!user) {
+    throw new Error(
+      "You must be logged in to Spotify to use this action. Please log in and try again."
+    );
+  }
+
+  return user;
+}
+
 export async function checkAuth(): Promise<boolean> {
   const accessToken = await getSetting("spotifyAccessToken");
 
@@ -29,33 +48,13 @@ export async function checkAuth(): Promise<boolean> {
 
     const meReq = await spotifyApi.getMe();
 
-    if (meReq.statusCode === 200) {
-      const existingId = await prisma.settings.findFirst({
-        where: { name: "spotifyUserId" },
-      });
-
-      if (existingId && existingId.value !== meReq.body.id) {
-        throw new Error(
-          "Looks like you're trying to log into a different Spotify account than the one you've previously authorized. Please log out of Spotify and try again, or create a new Interval organization for the new account."
-        );
-      }
-
-      await prisma.settings.upsert({
-        where: { name: "spotifyUserId" },
-        create: { name: "spotifyUserId", value: meReq.body.id },
-        update: { value: meReq.body.id },
-      });
-
-      await prisma.settings.upsert({
-        where: { name: "spotifyDisplayName" },
-        create: { name: "spotifyDisplayName", value: meReq.body.display_name },
-        update: { value: meReq.body.display_name },
-      });
-
-      return true;
+    if (meReq.statusCode !== 200) {
+      throw new Error(
+        "Looks like you're trying to log into a different Spotify account than the one you've linked to your Interval account . Please log out of Spotify and try again."
+      );
     }
 
-    return false;
+    return true;
   } catch (error) {
     if (
       error.message.startsWith(
@@ -68,6 +67,46 @@ export async function checkAuth(): Promise<boolean> {
     await updateSetting("spotifyAccessToken", null);
     return false;
   }
+}
+
+async function ensureUser() {
+  const meReq = await spotifyApi.getMe();
+
+  if (meReq.statusCode !== 200) {
+    return;
+  }
+
+  const existingUser = await prisma.user.findFirst({
+    where: { id: meReq.body.id },
+  });
+
+  if (existingUser) {
+    if (existingUser.id !== meReq.body.id) {
+      throw new Error(
+        "Looks like you're trying to log into a different Spotify account than the one you've linked to your Interval account . Please log out of Spotify and try again."
+      );
+    }
+
+    // if we already have a user with this spotify ID but the email is different, kick you out
+    if (existingUser.intervalEmail !== ctx.user.email) {
+      throw new Error(
+        "Your Spotify account is already linked to a different Interval account. Please log out of Spotify and try again."
+      );
+    }
+
+    // ok
+    return;
+  }
+
+  await prisma.user.create({
+    data: {
+      id: meReq.body.id,
+      intervalEmail: ctx.user.email,
+      displayName: meReq.body.display_name,
+    },
+  });
+
+  return true;
 }
 
 export async function requireSpotifyAuth() {
@@ -101,6 +140,10 @@ export async function requireSpotifyAuth() {
     const tokens = await spotifyApi.authorizationCodeGrant(authCode);
 
     await updateSetting("spotifyAccessToken", tokens.body.access_token);
+
+    spotifyApi.setAccessToken(tokens.body.access_token);
+
+    await ensureUser();
 
     if (resumeAction) {
       await ctx.redirect({ action: resumeAction });

@@ -11,16 +11,19 @@ datasource db {
 }
 
 model Playlist {
-  id            String            @id
+  id            String   @id
   name          String
   total         Int
-  collaborative Boolean           @default(false)
-  public        Boolean           @default(false)
-  description   String?           @db.Text
-  isFavorite    Boolean           @default(false)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  tracks        PlaylistToTrack[]
+  collaborative Boolean  @default(false)
+  public        Boolean  @default(false)
+  description   String?  @db.Text
+  isFavorite    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  userId        String
+
+  tracks PlaylistToTrack[]
+  user   User?             @relation(fields: [userId], references: [id])
 }
 
 model PlaylistToTrack {
@@ -43,10 +46,14 @@ enum SettingsName {
 }
 
 model Settings {
-  name      SettingsName @id
+  name      SettingsName
   value     String?      @db.Text
+  userId    String
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
+  user      User         @relation(fields: [userId], references: [id])
+
+  @@unique([name, userId])
 }
 
 model Track {
@@ -62,4 +69,12 @@ model Track {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   playlists     PlaylistToTrack[]
+}
+
+model User {
+  id            String     @id
+  displayName   String
+  intervalEmail String     @unique
+  playlists     Playlist[]
+  settings      Settings[]
 }

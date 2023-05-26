@@ -1,8 +1,9 @@
 import { ctx } from "@interval/sdk";
 import SpotifyWebApi from "spotify-web-api-node";
-import { getDateString, getSetting, monthNames, sleep } from "./util";
+import { getDateString, monthNames, sleep } from "./util";
 import prisma from "./prisma";
 import { Prisma } from "@prisma/client";
+import { requireUser } from "./auth";
 
 const spotifyApi = new SpotifyWebApi({
   clientId: process.env.SPOTIFY_CLIENT_ID,
@@ -130,7 +131,6 @@ export async function collectTracksForMonth({ date }: { date: Date }) {
 
 export async function collectTracksFromPlaylist({
   id,
-  name,
 }: {
   id: string;
   name?: string;
@@ -177,15 +177,19 @@ export async function cachePlaylistTracks(
 
   const playlist = await spotifyApi.getPlaylist(playlistId);
 
+  const { id: userId } = await requireUser();
+
   // sync playlist details
   await prisma.playlist.upsert({
     where: { id: playlistId },
     create: {
       id: playlistId,
+      userId: userId,
       name: playlist.body.name,
       total: playlist.body.tracks.total,
     },
     update: {
+      userId: userId,
       name: playlist.body.name,
       total: playlist.body.tracks.total,
     },
@@ -289,7 +293,7 @@ export async function collectPlaylists({ cache = false }: { cache?: boolean }) {
 
   ctx.loading.start("Fetching playlists...");
 
-  const userId = await getSetting("spotifyUserId");
+  const { id: userId } = await requireUser();
 
   while (hasMore) {
     const playlists = await spotifyApi.getUserPlaylists({
@@ -321,6 +325,7 @@ export async function collectPlaylists({ cache = false }: { cache?: boolean }) {
       await prisma.playlist.upsert({
         where: { id: playlist.id },
         update: {
+          userId: userId,
           name: playlist.name,
           public: playlist.public,
           collaborative: playlist.collaborative,
@@ -329,6 +334,7 @@ export async function collectPlaylists({ cache = false }: { cache?: boolean }) {
         },
         create: {
           id: playlist.id,
+          userId: userId,
           name: playlist.name,
           public: playlist.public,
           collaborative: playlist.collaborative,
