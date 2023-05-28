@@ -1,6 +1,6 @@
 import { ctx, io, Layout } from "@interval/sdk";
 import spotifyApi, { spotifyScopes } from "./spotify";
-import { getSetting, sleep, updateSetting } from "./util";
+import { sleep } from "./util";
 import prisma from "./prisma";
 import { User } from "@prisma/client";
 
@@ -39,18 +39,21 @@ export async function requireUser(): Promise<User> {
 }
 
 export async function checkAuth(): Promise<boolean> {
-  const accessToken = await getSetting("spotifyAccessToken");
+  const user = await getUser();
 
-  if (!accessToken) return false;
+  if (!user?.accessToken) return false;
 
   try {
-    spotifyApi.setAccessToken(accessToken);
+    spotifyApi.setAccessToken(user.accessToken);
+    spotifyApi.setRefreshToken(user.refreshToken);
 
     const meReq = await spotifyApi.getMe();
 
     if (meReq.statusCode !== 200) {
+      console.log("Unable to get user with stored tokens", meReq);
+
       throw new Error(
-        "Looks like you're trying to log into a different Spotify account than the one you've linked to your Interval account . Please log out of Spotify and try again."
+        "Looks like you're trying to log into a different Spotify account than the one you've linked to your Interval account. Please log out of Spotify and try again."
       );
     }
 
@@ -64,7 +67,12 @@ export async function checkAuth(): Promise<boolean> {
       throw error;
     }
 
-    await updateSetting("spotifyAccessToken", null);
+    // tokens are bad; clear them
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { accessToken: null, refreshToken: null },
+    });
+
     return false;
   }
 }
@@ -95,10 +103,10 @@ async function ensureUser() {
     }
 
     // ok
-    return;
+    return existingUser;
   }
 
-  await prisma.user.create({
+  const newUser = await prisma.user.create({
     data: {
       id: meReq.body.id,
       intervalEmail: ctx.user.email,
@@ -106,7 +114,7 @@ async function ensureUser() {
     },
   });
 
-  return true;
+  return newUser;
 }
 
 export async function requireSpotifyAuth() {
@@ -139,11 +147,19 @@ export async function requireSpotifyAuth() {
   if (authCode) {
     const tokens = await spotifyApi.authorizationCodeGrant(authCode);
 
-    await updateSetting("spotifyAccessToken", tokens.body.access_token);
-
+    // set API tokens, then fetch user, then sync user with database
     spotifyApi.setAccessToken(tokens.body.access_token);
+    spotifyApi.setRefreshToken(tokens.body.refresh_token);
 
-    await ensureUser();
+    const user = await ensureUser();
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        accessToken: tokens.body.access_token,
+        refreshToken: tokens.body.refresh_token,
+      },
+    });
 
     if (resumeAction) {
       await ctx.redirect({ action: resumeAction });

@@ -38,6 +38,8 @@ model PlaylistToTrack {
   @@unique([playlistId, trackId])
 }
 
+// note: none of these are really in use now; keeping them because
+// I want to keep the Settings table but can't with an empty enum.
 enum SettingsName {
   spotifyAccessToken
   spotifyRefreshToken
@@ -75,6 +77,8 @@ model User {
   id            String     @id
   displayName   String
   intervalEmail String     @unique
+  accessToken   String?    @db.Text
+  refreshToken  String?    @db.Text
   playlists     Playlist[]
   settings      Settings[]
 }
